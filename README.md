@@ -14,3 +14,11 @@ AI help to find bronze layer DDL as per file format and manually checked if good
 leveraged Ai to create boiler plate code for reading csv and loading the datai ndelta table
 
 F.input_file_name failed so used DB diagnosis AI to find other function to make sure audit column have file name
+
+changed the approcah we will use csv and loadit in unified bronze layer and store csv in archive later
+
+now created config table simple with utility, type, source column, target column but when reading form csv we need ot have dedicated schema so added datatype to config tables
+
+--------------
+
+moving to another approcah keep bronze as it is
