@@ -10,3 +10,7 @@ silver will be cleaned data and load data in datamodel (thinking of data model)
 and gold will be aggregated lawyer
 
 AI help to find bronze layer DDL as per file format and manually checked if good
+
+leveraged Ai to create boiler plate code for reading csv and loading the datai ndelta table
+
+F.input_file_name failed so used DB diagnosis AI to find other function to make sure audit column have file name
