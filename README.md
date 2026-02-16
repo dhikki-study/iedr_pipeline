@@ -21,4 +21,6 @@ now created config table simple with utility, type, source column, target column
 
 --------------
 
-moving to another approcah keep bronze as it is
+moving to another approcah keep bronze as it is much closer to file and we will rename csv header to match wiht bronze layer, took help of Ai for creatign ddl and config table
+
+handling null in data had issue while ocnversion of data
