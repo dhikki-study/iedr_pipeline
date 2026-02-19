@@ -1,0 +1,27 @@
+CREATE TABLE workspace.silver.silver_circuits_stg (
+  circuit STRING NOT NULL COMMENT 'Circuit/feeder name from Bronze',
+  utility_id STRING NOT NULL COMMENT 'Utility identifier',
+  fvoltage DOUBLE COMMENT 'Actual/operating voltage (from Bronze)',
+  fmaxhc DOUBLE COMMENT 'Maximum hosting capacity (from Bronze)',
+  fminhc DOUBLE COMMENT 'Minimum hosting capacity (from Bronze)',
+  refresh_since DOUBLE COMMENT 'Date since last refresh (from Bronze)',
+  refresh_date TIMESTAMP COMMENT 'Data refresh date (from Bronze)',
+  shape_length DOUBLE COMMENT 'Circuit shape length (from Bronze)',
+  ingestion_time TIMESTAMP NOT NULL COMMENT 'Bronze ingestion timestamp',
+  source_file STRING NOT NULL COMMENT 'Original source CSV filename')
+USING delta
+COMMENT 'Staging: Incremental circuit data from Bronze before merge to Silver'
+TBLPROPERTIES (
+  'delta.autoOptimize.optimizeWrite' = 'true',
+  'delta.checkpoint.writeStatsAsJson' = 'false',
+  'delta.checkpoint.writeStatsAsStruct' = 'true',
+  'delta.enableDeletionVectors' = 'true',
+  'delta.enableRowTracking' = 'true',
+  'delta.feature.appendOnly' = 'supported',
+  'delta.feature.deletionVectors' = 'supported',
+  'delta.feature.domainMetadata' = 'supported',
+  'delta.feature.invariants' = 'supported',
+  'delta.feature.rowTracking' = 'supported',
+  'delta.minReaderVersion' = '3',
+  'delta.minWriterVersion' = '7',
+  'delta.parquet.compression.codec' = 'zstd')

@@ -1,0 +1,34 @@
+CREATE TABLE workspace.silver.silver_installed_der_stg (
+  project_id STRING NOT NULL COMMENT 'Unique project identifier',
+  project_circuit_id STRING COMMENT 'Circuit/feeder where project is installed',
+  der_interconn_loc STRING COMMENT 'DER interconnection location',
+  street_address STRING COMMENT 'Project street address',
+  utility_id STRING NOT NULL COMMENT 'Utility identifier',
+  project_type STRING COMMENT 'Type of DER project',
+  nameplate_rating DOUBLE COMMENT 'Nameplate rating capacity (kW)',
+  Hybrid STRING COMMENT 'Hybrid system indicator',
+  DER_TYPE STRING COMMENT 'Type of DER (SolarPV, Wind, EnergyStorage, etc.)',
+  DER_VALUE DOUBLE COMMENT 'Capacity value for this DER type (kW)',
+  total_charges_cesir DOUBLE COMMENT 'Total CESIR charges',
+  total_charges_construction DOUBLE COMMENT 'Total construction charges',
+  cesir_est DOUBLE COMMENT 'CESIR estimate',
+  system_upgrade_est DOUBLE COMMENT 'System upgrade estimate',
+  interconnection_cost DOUBLE COMMENT 'Total interconnection cost',
+  ingestion_timestamp TIMESTAMP NOT NULL COMMENT 'When loaded to Silver (current timestamp)',
+  source_file STRING NOT NULL COMMENT 'Original source CSV filename')
+USING delta
+COMMENT 'Staging: Incremental installed DER data (unpivoted, project-level)'
+TBLPROPERTIES (
+  'delta.autoOptimize.optimizeWrite' = 'true',
+  'delta.checkpoint.writeStatsAsJson' = 'false',
+  'delta.checkpoint.writeStatsAsStruct' = 'true',
+  'delta.enableDeletionVectors' = 'true',
+  'delta.enableRowTracking' = 'true',
+  'delta.feature.appendOnly' = 'supported',
+  'delta.feature.deletionVectors' = 'supported',
+  'delta.feature.domainMetadata' = 'supported',
+  'delta.feature.invariants' = 'supported',
+  'delta.feature.rowTracking' = 'supported',
+  'delta.minReaderVersion' = '3',
+  'delta.minWriterVersion' = '7',
+  'delta.parquet.compression.codec' = 'zstd')
