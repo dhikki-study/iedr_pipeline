@@ -1,0 +1,31 @@
+CREATE TABLE workspace.gold.gold_circuit_summary (
+  circuit STRING NOT NULL COMMENT 'Circuit/Feeder identifier',
+  utility_id STRING NOT NULL COMMENT 'Utility identifier',
+  max_capacity_mw DOUBLE COMMENT 'Maximum hosting capacity (MW)',
+  voltage_kv DOUBLE COMMENT 'Circuit voltage (kV)',
+  installed_count BIGINT COMMENT 'Count of installed DER projects',
+  planned_count BIGINT COMMENT 'Count of planned DER projects',
+  installed_capacity_mw DOUBLE COMMENT 'Total installed DER capacity (MW)',
+  planned_capacity_mw DOUBLE COMMENT 'Total planned DER capacity (MW)',
+  available_capacity_mw DOUBLE COMMENT 'Available hosting capacity (MW)',
+  last_refresh_date TIMESTAMP COMMENT 'Last circuit refresh date',
+  gold_load_timestamp TIMESTAMP NOT NULL COMMENT 'When this Gold record was created',
+  CONSTRAINT `pk_feeder` PRIMARY KEY (`circuit`, `utility_id`))
+USING delta
+PARTITIONED BY (utility_id)
+COMMENT 'Gold layer: Feeder summary with DER counts and available capacity'
+TBLPROPERTIES (
+  'delta.autoOptimize.autoCompact' = 'true',
+  'delta.autoOptimize.optimizeWrite' = 'true',
+  'delta.checkpoint.writeStatsAsJson' = 'false',
+  'delta.checkpoint.writeStatsAsStruct' = 'true',
+  'delta.enableDeletionVectors' = 'true',
+  'delta.enableRowTracking' = 'true',
+  'delta.feature.appendOnly' = 'supported',
+  'delta.feature.deletionVectors' = 'supported',
+  'delta.feature.domainMetadata' = 'supported',
+  'delta.feature.invariants' = 'supported',
+  'delta.feature.rowTracking' = 'supported',
+  'delta.minReaderVersion' = '3',
+  'delta.minWriterVersion' = '7',
+  'delta.parquet.compression.codec' = 'zstd')

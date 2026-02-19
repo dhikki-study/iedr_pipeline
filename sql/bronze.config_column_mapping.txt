@@ -1,0 +1,23 @@
+CREATE TABLE workspace.bronze.config_column_mapping (
+  utility_id STRING NOT NULL COMMENT 'Source utility identifier (utility1, utility2, etc.)',
+  filename STRING NOT NULL COMMENT 'Exact CSV filename (e.g., utility1_circuits.csv)',
+  source_column_name STRING NOT NULL COMMENT 'Column name in source CSV file',
+  target_column_name STRING NOT NULL COMMENT 'Column name in Bronze table',
+  data_type STRING NOT NULL COMMENT 'Target data type (string, double, int, timestamp, etc.)')
+USING delta
+COMMENT 'Configuration for mapping and casting CSV columns to Bronze table columns'
+TBLPROPERTIES (
+  'delta.checkpoint.writeStatsAsJson' = 'false',
+  'delta.checkpoint.writeStatsAsStruct' = 'true',
+  'delta.enableChangeDataFeed' = 'true',
+  'delta.enableDeletionVectors' = 'true',
+  'delta.enableRowTracking' = 'true',
+  'delta.feature.appendOnly' = 'supported',
+  'delta.feature.changeDataFeed' = 'supported',
+  'delta.feature.deletionVectors' = 'supported',
+  'delta.feature.domainMetadata' = 'supported',
+  'delta.feature.invariants' = 'supported',
+  'delta.feature.rowTracking' = 'supported',
+  'delta.minReaderVersion' = '3',
+  'delta.minWriterVersion' = '7',
+  'delta.parquet.compression.codec' = 'zstd')

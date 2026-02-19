@@ -1,0 +1,35 @@
+CREATE TABLE workspace.silver.silver_circuits (
+  circuit_id BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) COMMENT 'Auto-incrementing unique circuit identifier (PK)',
+  circuit STRING NOT NULL COMMENT 'Circuit/feeder name',
+  utility_id STRING NOT NULL COMMENT 'Utility identifier',
+  fvoltage DOUBLE COMMENT 'Actual/operating voltage',
+  fmaxhc DOUBLE COMMENT 'Maximum hosting capacity',
+  fminhc DOUBLE COMMENT 'Minimum hosting capacity',
+  refresh_since DOUBLE COMMENT 'Date since last refresh',
+  refresh_date TIMESTAMP COMMENT 'Data refresh date',
+  shape_length DOUBLE COMMENT 'Circuit shape length',
+  active BOOLEAN NOT NULL DEFAULT TRUE COMMENT 'True = current/active record, False = historical/inactive',
+  ingestion_time TIMESTAMP NOT NULL COMMENT 'When loaded to Silver',
+  source_file STRING NOT NULL COMMENT 'Original source CSV filename')
+USING delta
+PARTITIONED BY (utility_id)
+COMMENT 'Silver layer: Circuit data with historical tracking (Type 2 SCD)'
+TBLPROPERTIES (
+  'delta.autoOptimize.autoCompact' = 'true',
+  'delta.autoOptimize.optimizeWrite' = 'true',
+  'delta.checkpoint.writeStatsAsJson' = 'false',
+  'delta.checkpoint.writeStatsAsStruct' = 'true',
+  'delta.enableChangeDataFeed' = 'true',
+  'delta.enableDeletionVectors' = 'true',
+  'delta.enableRowTracking' = 'true',
+  'delta.feature.allowColumnDefaults' = 'supported',
+  'delta.feature.appendOnly' = 'supported',
+  'delta.feature.changeDataFeed' = 'supported',
+  'delta.feature.deletionVectors' = 'supported',
+  'delta.feature.domainMetadata' = 'supported',
+  'delta.feature.identityColumns' = 'supported',
+  'delta.feature.invariants' = 'supported',
+  'delta.feature.rowTracking' = 'supported',
+  'delta.minReaderVersion' = '3',
+  'delta.minWriterVersion' = '7',
+  'delta.parquet.compression.codec' = 'zstd')
