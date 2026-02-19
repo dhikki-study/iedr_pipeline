@@ -1,0 +1,157 @@
+# Project Setup Guide — Databricks Table Creation
+
+This guide explains how to set up all required tables in Databricks before running the notebooks. Follow the steps in order: **Bronze → Silver → Gold**.
+
+---
+
+## Prerequisites
+
+- Access to a Databricks workspace with a Serverless warehouse (2XS or larger is fine)
+- The `workspace` catalog already exists in your Databricks environment
+- The SQL file `sql/create_tables.sql` from this repo
+
+---
+
+## Step 1 — Create the Schemas (Databases)
+
+In your Databricks workspace, open the **SQL Editor** (left sidebar → SQL → SQL Editor) and run the following to create the three medallion-layer schemas inside the `workspace` catalog:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS workspace.bronze;
+CREATE SCHEMA IF NOT EXISTS workspace.silver;
+CREATE SCHEMA IF NOT EXISTS workspace.gold;
+```
+
+You should see them appear under **Catalog → My Organization → workspace** in the left-hand Catalog explorer.
+
+---
+
+## Step 2 — Run the Table Creation Script
+
+The DDL for all tables lives in `sql/create_tables.sql`. To execute it:
+
+1. In the Databricks workspace, go to **SQL → SQL Editor**
+2. Select your warehouse from the warehouse dropdown (e.g. *Serverless Starter Warehouse*)
+3. Open or paste the contents of `sql/*`
+4. Run the full script
+
+This will create the following tables:
+
+### Bronze Layer — `workspace.bronze`
+| Table | Description |
+|---|---|
+| `bronze_circuits` | Raw ingested circuit data |
+| `bronze_installed_der` | Raw installed distributed energy resource data |
+| `bronze_planned_der` | Raw planned DER data |
+| `config_column_mapping` | Configuration table for column name mappings |
+
+### Silver Layer — `workspace.silver`
+| Table | Description |
+|---|---|
+| `silver_circuits` | Cleaned and validated circuit data |
+| `silver_circuits_stg` | Staging table for circuit transformations |
+| `silver_installed_der` | Cleaned installed DER data |
+| `silver_installed_der_stg` | Staging table for installed DER transformations |
+| `silver_planned_der` | Cleaned planned DER data |
+| `silver_planned_der_stg` | Staging table for planned DER transformations |
+
+### Gold Layer — `workspace.gold`
+| Table | Description |
+|---|---|
+| `gold_circuit_install_planned` | Aggregated view of circuit installs vs planned |
+| `gold_circuit_summary` | Summary metrics per circuit |
+
+---
+
+## Step 3 — Verify Tables in the Catalog
+
+After running the script, go to **Catalog** in the left sidebar and expand:
+
+```
+My Organization
+  └── workspace
+        ├── bronze
+        │     ├── bronze_circuits
+        │     ├── bronze_installed_der
+        │     ├── bronze_planned_der
+        │     └── config_column_mapping
+        ├── silver
+        │     ├── silver_circuits
+        │     ├── silver_circuits_stg
+        │     ├── silver_installed_der
+        │     ├── silver_installed_der_stg
+        │     ├── silver_planned_der
+        │     └── silver_planned_der_stg
+        └── gold
+              ├── gold_circuit_install_planned
+              └── gold_circuit_summary
+```
+
+All tables should be visible before proceeding to run the notebooks.
+
+---
+
+Here's the clean Step 4 for you to paste:
+
+----
+
+Here's a **Step 3.5** (sits between table creation and running notebooks) for you to paste:
+
+---
+
+## Step 3.5 — Upload Source CSV Files
+
+Before running any notebooks, upload your source CSV files to the Databricks Volume landing folder.
+
+**Drop all CSV files here:**
+
+```
+/Volumes/workspace/default/iedr_csv/landing
+```
+
+Also create this directory /Volumes/workspace/default/iedr_csv/archive
+
+### How to Upload
+1. In Databricks, go to **Catalog → workspace → default → Volumes → iedr_csv**
+2. Click on the **`landing`** folder
+3. Click **Upload to this volume** (top right)
+4. Upload your CSV files
+
+> Once processed, files will be moved to the **`archive`** folder automatically by the ingestion notebooks. Do not manually place files in `archive`.
+
+---
+
+Want me to update the full README file with all steps combined now?
+
+
+
+---
+
+## Step 4 — Import and Run the Notebooks
+
+All notebooks are located in the `notebooks/` folder of this repo. Import each `.py` file into Databricks and place them under:
+
+```
+Workspace → Users → <your-email> → IEDR_Project
+```
+
+### How to Import
+1. In Databricks, go to **Workspace → Users → your-email → IEDR_Project**
+
+
+### Run in This Order
+
+| Order | Notebook | Layer |
+|---|---|---|
+| 1 | `bronze_ingestion` | Bronze |
+| 2 | `silver_circuit_stg_load` | Silver |
+| 3 | `silver_circuit_load` | Silver |
+| 4 | `silver_install_der_stg` | Silver |
+| 5 | `silver_install_der_load` | Silver |
+| 6 | `silver_planned_der_stg` | Silver |
+| 7 | `silver_planned_der_load` | Silver |
+| 8 | `gold_circuit_install_planned` | Gold |
+| 9 | `gold_circuit_summary` | Gold |
+
+---
+
