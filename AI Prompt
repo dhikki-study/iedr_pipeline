@@ -1,0 +1,109 @@
+
+
+## **📋 AI Prompts Used in IEDR Data Pipeline Project**
+
+### **Bronze Layer - Initial Setup**
+- "let us take stg load 1 by 1 first i will make get_max_ingestion timestamp, uupdate following , i have reffered silver_sircuit_stg script"
+- "in extract_and_unpivot_from_bronze you gave following [code snippet] can you use this format use spark.sql"
+- "can pysaprk convert '2022/10/01 00:00:00+00' to timestamp"
+- "or we can just replace / with -"
+- "can we update Hybrid column to string, we can drop data and reload it"
+
+---
+
+### **Silver Layer - Design & Implementation**
+- "now first create script to incrementally load data form bronze to stg, here we will again have to split df utility2 is fine but utility1 needs to be normalised , refer the silver script we create for silver_circuit. only focus on stg load scritp for now. Keep it similar to silver_circuit"
+- "just give me extract_and_unpivot_from_bronze with following changes * the data to unpivot is only for utility1 utility 2 is fine so i think first fetch data form bronze than seperate the 2 df and than unpivot utility1 only"
+- "these are my function, please reate main to call thesei n order: get_max_ingestion_timestamp, extract_and_unpivot_from_bronze, load_to_staging"
+- "now let us load fomr silver stg to silver"
+- "since utility 1 have 1 feeder with multiple segment so multiple value for fvolatage,maxhx,minhc than how to calculate on silver layer where we have aggregated already. or for circuit i hsouldn't have done agg and done in in gold layer"
+
+---
+
+### **Data Understanding**
+- "let us try to work on understadnign columns, can we discuss what each column represent" (uploaded circuit files)
+- "what is nmaxhc vs fmaxhc"
+
+---
+
+### **Gold Layer - Design & Implementation**
+- i have done following * created bronzei wide format * created silver have agg circuit data and normalised planner der and installed der we will do  gold now
+- we will try to keep it simple with minimal tables
+- "for first one 'gold_feeder_summary (Main table - SIMPLIFIED)' "
+- "i am thinking to remove utilization_pct"
+- "lets uwork on ddl for 'gold_feeder_der_all' and .py to load it"
+
+---
+
+### **Code Quality & Best Practices**
+- "so seems we are done with coding, i am thinking some more things now the print statement you give can we move it to log file"
+
+
+---
+
+### **Technical Troubleshooting**
+- [Shared error about CAST_INVALID_INPUT] - "following error" (joining on wrong column type)
+- [Shared error about CANNOT_PARSE_TIMESTAMP] - "got error [DELTA_FAILED_TO_MERGE_FIELDS]"
+
+---
+
+### **Architecture & Design Questions**
+- "i hope you made sure the utlity 1 only needs to be unpivot utlity2 is passtrhough"
+- "i will recreate table how to get ddl for the table"
+
+---
+
+## **✅ Summary of AI Usage Pattern:**
+
+**Key themes:**
+- ✅ Bronze layer ingestion with type handling
+- ✅ Silver layer unpivot transformation (wide → long)
+- ✅ Utility-specific data normalization
+- ✅ Gold layer aggregation and optimization
+- ✅ Error troubleshooting and debugging
+- ✅ Best practices (logging, architecture decisions)
+- ✅ Data understanding and domain knowledge
+
+
+**You can tell the interviewer:**
+> "I used AI assistance for technical implementation details, debugging type conversion issues, understanding optimal data transformation patterns (like unpivot), and ensuring code quality with logging. I provided the overall architecture decisions and business logic while using AI as a technical accelerator."
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## **DDL Creation Prompts (Significant User Input)**
+
+### **Silver Layer DDL:**
+
+• "now we will work on silver planned_der, let me give you attributes to have in stg table: project_id, queue_request_id, project_circuit_id, der_interconn_loc, utility_id, project_type, nameplate_rating, inverter_nameplate_rating, Hybrid, DER_TYPE, DER_VALUE, in_service_date, completion_date, project_status, status_rationale, queue_position, total_mw_substation, ingestion_timestamp, source_file. and main table wil have 2 more coumn active and project_id_pk which will be autoincrement"
+
+• "since utility 1 have 1 feeder with multiple segment so multiple value for fvolatage,maxhx,minhc we will calculate agg on silver layer 
+
+---
+
+### **Transformation Logic:**
+
+• "just give me extract_and_unpivot_from_bronze with  changes * the data to unpivot is only for utility1 utility 2 is fine so i think first fetch data form bronze than seperate the 2 df and than unpivot utility1 only"
+
+---
+
+### **Architecture & Design Decisions:**
+
+• "let us try to work on understadnign columns, can we discuss what each column represent" (uploaded utility circuit files)
+
+• "what is nmaxhc vs fmaxhc"
+
+---
+
+### **Code Quality:**
+
+• "so seems we are done with coding, i am thinking some more things now the print statement you give can we move it to log file"
+
+• "where are log stored"
+
+---
+
+**Copy-paste ready! ✅**
+
+
+
+----------------------------------------------------------------------------------------
