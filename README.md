@@ -1,3 +1,295 @@
+# IEDR Data Platform
+
+## Project Overview
+
+This project implements the **Bronze Layer** of a medallion architecture data pipeline built on Databricks. The Bronze layer is responsible for ingesting raw CSV files from utilities and storing the data in Delta tables for downstream processing.
+
+---
+
+==================================================================BRONZE LAYER================================================================================================
+
+The Bronze layer consists of **3 universal data tables** and **1 configuration table**.
+
+### Data Tables
+
+| Table | Full Name | Description |
+|-------|-----------|-------------|
+| Circuits | `workspace.bronze.bronze_circuits` | Stores electrical circuit information submitted by utilities |
+| Installed DER | `workspace.bronze.bronze_installed_der` | Stores data on Distributed Energy Resources already installed |
+| Planned DER | `workspace.bronze.bronze_planned_der` | Stores data on Distributed Energy Resources planned for future installation |
+
+These tables are **universal** — meaning all utilities write into the same shared tables, distinguished by a `utility_id` column added during ingestion.
+
+### Configuration Table
+
+| Table | Full Name |
+|-------|-----------|
+| Column Mapping Config | `workspace.bronze.config_column_mapping` |
+
+---
+
+## The Story of the Config Table
+
+Different utilities submit their CSV files using **different column names** for the same data. For example, one utility might call a column `circuit_id` while another calls it `ckt_no` — but both mean the same thing.
+
+Without a config-driven approach, you would need to write custom ingestion code for every utility and every file type. As the number of utilities grows, this becomes unmanageable.
+
+The `config_column_mapping` table solves this elegantly. It stores the mapping between each utility's raw column names and the standardized target column names in the Bronze tables, along with the expected data type for casting.
+
+```
+| filename                  | source_column_name | target_column_name | data_type |
+|---------------------------|--------------------|--------------------|-----------|
+| utility1_circuits.csv     | ckt_no             | circuit_id         | int       |
+| utility1_circuits.csv     | install_dt         | install_date       | timestamp |
+| utility2_circuits.csv     | circuit_id         | circuit_id         | int       |
+```
+
+At ingestion time, the pipeline simply looks up the config for the incoming file, applies the renaming and casting dynamically, and loads the standardized data into the Bronze table.
+
+**The key benefit:** when a new utility onboards, no code changes are needed. A data engineer simply adds the new utility's column mappings to the config table, and the pipeline handles it automatically.
+
+---
+
+## Pipeline Flow
+
+```
+Landing Zone (CSV files)
+        ↓
+  Read config from config_column_mapping
+        ↓
+  Rename & Cast columns to standard schema
+        ↓
+  Add missing columns as NULL
+        ↓
+  Add metadata (utility_id, ingestion_timestamp, source_file)
+        ↓
+  Write to Bronze Delta Table (append)
+        ↓
+  Archive processed file with timestamp
+```
+
+---
+
+## Metadata Columns
+
+Every Bronze table includes these standard metadata columns added automatically during ingestion:
+
+| Column | Description |
+|--------|-------------|
+| `utility_id` | Extracted from the filename (e.g. `utility1` from `utility1_circuits.csv`) |
+| `ingestion_timestamp` | Timestamp when the file was processed |
+| `source_file` | Original filename for traceability |
+
+---
+
+## File Naming Convention
+
+Files dropped in the landing zone must follow this naming pattern:
+
+```
+{utility_id}_{table_type}.csv
+
+Examples:
+  utility1_circuits.csv
+  utility2_install_der.csv
+  utility3_planned_der.csv
+```
+
+The pipeline uses the filename to determine both the target table and the utility ID automatically.
+
+==================================================================SILVER LAYER================================================================================================
+
+The Silver layer applies business rules, transformations, and Type 2 Slowly Changing Dimension (SCD2) tracking on top of raw Bronze data. Each domain follows a two-step pattern: **Staging → Silver**, ensuring data is validated and transformed before being merged into the final Silver tables.
+
+---
+
+## Tables
+
+### Circuits
+| Table | Description |
+|---|---|
+| `workspace.bronze.bronze_circuits` | Raw source |
+| `workspace.silver.silver_circuits_stg` | Staging — aggregated to circuit level |
+| `workspace.silver.silver_circuits` | Final Silver — SCD2 history tracked |
+
+### Installed DER
+| Table | Description |
+|---|---|
+| `workspace.bronze.bronze_installed_der` | Raw source — wide format (one column per DER type) |
+| `workspace.silver.silver_installed_der_stg` | Staging — unpivoted to long format (DER_TYPE, DER_VALUE) |
+| `workspace.silver.silver_installed_der` | Final Silver — SCD2 history tracked |
+
+### Planned DER
+| Table | Description |
+|---|---|
+| `workspace.bronze.bronze_planned_der` | Raw source — wide format (one column per DER type) |
+| `workspace.silver.silver_planned_der_stg` | Staging — unpivoted to long format (DER_TYPE, DER_VALUE) |
+| `workspace.silver.silver_planned_der` | Final Silver — SCD2 history tracked |
+
+---
+
+## Data Flow
+
+```
+Bronze
+  │
+  │  incremental filter on ingestion_timestamp
+  │  (ingestion_timestamp > max Silver ingestion_timestamp)
+  ▼
+Staging  (overwrite each run)
+  │
+  │  utility-specific transformations
+  │  ┌─────────────────────────────────────────────────┐
+  │  │ utility1                      utility2           │
+  │  │ circuits  → aggregate         circuits → pass    │
+  │  │ DER       → unpivot + filter  DER      → pass    │
+  │  └─────────────────────────────────────────────────┘
+  │
+  │  union utility1 + utility2
+  ▼
+Silver  (append — SCD2)
+  │
+  │  Step 1: MERGE — mark changed records active = FALSE
+  │  Step 2: INSERT — new records + changed records with active = TRUE
+  ▼
+  Final Silver table with full history
+```
+
+---
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `silver_circuit_stg_load.py` | Bronze → Staging for Circuits |
+| `silver_circuit_load.py` | Staging → Silver for Circuits |
+| `silver_install_der_stg.py` | Bronze → Staging for Installed DER |
+| `silver_install_der_load.py` | Staging → Silver for Installed DER |
+| `silver_planned_der_stg.py` | Bronze → Staging for Planned DER |
+| `silver_planned_der_load.py` | Staging → Silver for Planned DER |
+
+---
+
+## SCD2 Implementation
+
+Each Silver table tracks the full history of changes using an `active` flag:
+
+```
+active = TRUE   →  current version of the record
+active = FALSE  →  historical version (data changed in a later load)
+```
+
+**Step 1 — MERGE (mark changed records inactive)**
+
+Matches on the natural business key and `active = TRUE`. If any tracked column has changed, the existing row is updated to `active = FALSE`.
+
+**Step 2 — INSERT (load new and changed records)**
+
+Inserts rows from staging that have no identical active match in Silver. This covers:
+- Brand new records not seen before
+- Records that were just marked inactive in Step 1 (changed data)
+
+Unchanged records — where an identical active row already exists in Silver — are skipped.
+
+---
+
+## Incremental Logic
+
+Each staging load uses a high-watermark pattern:
+
+==================================================================GOLD LAYER================================================================================================
+
+## Overview
+
+The Gold Layer is the final, analytics-ready tier of the medallion architecture for Distributed Energy Resource (DER) data. It aggregates and joins cleaned Silver data into two purpose-built tables designed for reporting, dashboards, and capacity planning.
+
+All Gold tables are **fully refreshed on each run** (overwrite mode). They are sourced exclusively from active records in the Silver layer.
+
+---
+
+## Architecture
+
+```
+Silver Layer
+├── silver_circuits          (active circuits with capacity and voltage)
+├── silver_installed_der     (DER units already connected to the grid)
+└── silver_planned_der       (DER projects in the interconnection queue)
+          │
+          ▼
+Gold Layer
+├── gold_circuit_summary          (one row per circuit — aggregated metrics)
+└── gold_circuit_install_planned  (one row per DER unit — installed + planned combined)
+```
+
+---
+
+## Gold Tables
+
+### 1. `gold_circuit_summary`
+**Notebook:** `gold_circuit_summary.py`
+
+A circuit-level summary table. Each row represents one active circuit with aggregated DER metrics joined from both installed and planned sources.
+
+| Column | Type | Description |
+|---|---|---|
+| `circuit` | string | Circuit identifier (primary key) |
+| `utility_id` | string | Utility that owns the circuit |
+| `max_capacity_mw` | double | Maximum hosting capacity (`fmaxhc`) |
+| `voltage_kv` | double | Circuit voltage (`fvoltage`) |
+| `last_refresh_date` | date | Silver layer last refresh date |
+| `installed_count` | long | Count of active installed DER units |
+| `installed_capacity_mw` | double | Total installed DER capacity in MW |
+| `planned_count` | long | Count of active planned DER projects |
+| `planned_capacity_mw` | double | Total planned DER capacity in MW |
+| `available_capacity_mw` | double | `max_capacity_mw - installed_capacity_mw` |
+| `gold_load_timestamp` | timestamp | Time this record was written to Gold |
+
+---
+
+### 2. `gold_circuit_install_planned`
+**Notebook:** `gold_circuit_install_planned.py`
+
+A granular DER-level table. Each row represents one individual DER unit (either installed or planned), joined to its parent circuit. Used for project-level analysis, interconnection queue review, and capacity drill-downs.
+
+| Column | Type | Description |
+|---|---|---|
+| `circuit` | string | Parent circuit identifier |
+| `utility_id` | string | Utility that owns the circuit |
+| `der_category` | string | `"Installed"` or `"Planned"` |
+| `project_id` | string | DER project identifier |
+| `der_type` | string | Type of DER (e.g., solar, battery, wind) |
+| `der_value` | double | DER capacity value in MW |
+| `nameplate_rating` | double | Nameplate capacity rating |
+| `street_address` | string | Physical location (installed only; null for planned) |
+| `der_interconn_loc` | string | Interconnection location identifier |
+| `project_status` | string | Project status (planned only; null for installed) |
+| `completion_date` | date | Estimated completion (planned only; null for installed) |
+| `gold_load_timestamp` | timestamp | Time this record was written to Gold |
+
+
+---
+
+## Refresh Pattern
+
+Both Gold tables use **full overwrite** on every run. There is no incremental or merge logic.
+
+```
+Run Trigger → Load Silver (active only) → Join/Aggregate → Overwrite Gold
+```
+
+
+## Catalog & Schema Reference
+
+```
+Catalog:  workspace
+Schema:   gold
+
+Tables:
+  workspace.gold.gold_circuit_summary
+  workspace.gold.gold_circuit_install_planned
+```
+
+
 # iedr_pipeline
 Esource_assignment
 
