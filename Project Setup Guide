@@ -91,3 +91,67 @@ All tables should be visible before proceeding to run the notebooks.
 
 ---
 
+Here's the clean Step 4 for you to paste:
+
+----
+
+Here's a **Step 3.5** (sits between table creation and running notebooks) for you to paste:
+
+---
+
+## Step 3.5 — Upload Source CSV Files
+
+Before running any notebooks, upload your source CSV files to the Databricks Volume landing folder.
+
+**Drop all CSV files here:**
+
+```
+/Volumes/workspace/default/iedr_csv/landing
+```
+
+Also create this directory /Volumes/workspace/default/iedr_csv/archive
+
+### How to Upload
+1. In Databricks, go to **Catalog → workspace → default → Volumes → iedr_csv**
+2. Click on the **`landing`** folder
+3. Click **Upload to this volume** (top right)
+4. Upload your CSV files
+
+> Once processed, files will be moved to the **`archive`** folder automatically by the ingestion notebooks. Do not manually place files in `archive`.
+
+---
+
+Want me to update the full README file with all steps combined now?
+
+
+
+---
+
+## Step 4 — Import and Run the Notebooks
+
+All notebooks are located in the `notebooks/` folder of this repo. Import each `.py` file into Databricks and place them under:
+
+```
+Workspace → Users → <your-email> → IEDR_Project
+```
+
+### How to Import
+1. In Databricks, go to **Workspace → Users → your-email → IEDR_Project**
+
+
+### Run in This Order
+
+| Order | Notebook | Layer |
+|---|---|---|
+| 1 | `bronze_ingestion` | Bronze |
+| 2 | `silver_circuit_stg_load` | Silver |
+| 3 | `silver_circuit_load` | Silver |
+| 4 | `silver_install_der_stg` | Silver |
+| 5 | `silver_install_der_load` | Silver |
+| 6 | `silver_planned_der_stg` | Silver |
+| 7 | `silver_planned_der_load` | Silver |
+| 8 | `gold_circuit_install_planned` | Gold |
+| 9 | `gold_circuit_summary` | Gold |
+
+---
+
